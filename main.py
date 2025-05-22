@@ -9,6 +9,8 @@ from app import App
 from modes.load_book_mode import LoadBookMode
 from modes.load_haiku_mode import LoadHaikuMode
 from modes.ask_mode import AskMode
+from modes.load_find_the_moment_mode import LoadFindTheMomentMode
+from modes.find_the_moment_mode import FindTheMomentMode
 
 load_dotenv()
 
@@ -34,5 +36,8 @@ if __name__ == "__main__":
     app.use("load-haiku", LoadHaikuMode)
     app.use("load-book", LoadBookMode)
     app.use("book", BookMode)
+    app.use("load-FindTheMoment", LoadFindTheMomentMode)
+    app.use("FindTheMoment", FindTheMomentMode)
+
 
     app.run()

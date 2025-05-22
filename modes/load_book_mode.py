@@ -3,7 +3,7 @@ from console import Console
 from mode import Mode
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_experimental.text_splitter import SemanticChunker
-from langchain_openai import OpenAIEmbeddings
+from langchain_community.embeddings import OllamaEmbeddings
 from langchain_core.documents import Document
 from langchain_chroma import Chroma
 
@@ -27,16 +27,17 @@ class LoadBookMode(Mode):
 
     def run(self):
         self.console.info(f"Loading book {self.book}...")
+        embedding = OllamaEmbeddings(model="mxbai-embed-large:latest")
 
         # Create vector store
         vector_store = Chroma(
-            embedding_function=OpenAIEmbeddings(),
+            embedding_function=embedding,
             persist_directory="./store"
         )
 
         # Loading
         text_splitter = SemanticChunker(
-            embeddings=OpenAIEmbeddings(),
+            embeddings=embedding,
         )
         
         loader = PyPDFLoader(self.book)

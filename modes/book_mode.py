@@ -8,6 +8,7 @@ from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
+from langchain_community.embeddings import OllamaEmbeddings
 
 class BookMode(Mode):
 
@@ -44,9 +45,10 @@ class BookMode(Mode):
         {documents}
         """
 
+        embedding = OllamaEmbeddings(model="mxbai-embed-large:latest")
         # load VectorStore
         vector_store = Chroma(
-            embedding_function=OpenAIEmbeddings(),
+            embedding_function=embedding,
             persist_directory="./store"
         )
 
