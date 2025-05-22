@@ -55,25 +55,36 @@ class LoadFindTheMomentMode(Mode):
             self.console.print(f"❌ Impossible de récupérer la transcription : {e}")
             return
         
-        text = ""
+        sentences = []
 
-        with Progress() as progress:
-            task = progress.add_task("[cyan]Chargement de la transcription...", total=len(fetched_transcript))
-
-            for i in range(len(fetched_transcript)):
-
-                if i % 9 == 0:
-                    text = "Temps " + self.format_seconds(fetched_transcript[i].start) + ":\n"
-                elif i % 9 == 6 or i == len(fetched_transcript) - 1:
-                    # print(text)
-                    doc = Document(page_content=text)
-                    chunks = text_splitter.split_documents([doc])
-                    vector_store.add_documents(chunks)
-                    text = ""
-                    # print("################################")
-
+        for i in range(len(fetched_transcript)):
+            splite = re.split(r'[.!?]', fetched_transcript[i].text)
+            for j in range(len(splite)):
+                if sentences == []:
+                    sentences.append({
+                        "time": self.format_seconds(fetched_transcript[i].start),
+                        "text": splite[j]
+                    })
                 else:
-                    text += " " + fetched_transcript[i].text
+                    if j == 0:
+                        sentences[-1]["text"] += " " + splite[j]
+                    else:
+                        sentences.append({
+                        "time": self.format_seconds(fetched_transcript[i].start),
+                        "text": splite[j]
+                    })
+        
+        
+        with Progress() as progress:
+            task = progress.add_task("[cyan]Chargement de la transcription...", total=len(sentences))
+            # print(sentences)
+            for sentence in sentences:
+                doc = Document(page_content=sentence["text"], metadata={
+                    "time": sentence["time"],
+                    "video_id": self.extract_video_id(self.youtube_link),
+                })
+                chunks = text_splitter.split_documents([doc])
+                vector_store.add_documents(chunks)
                 progress.update(task, advance=1)
 
         self.console.print("[green]✅ Transcription chargée avec succès.")
@@ -94,5 +105,9 @@ class LoadFindTheMomentMode(Mode):
         else:
             return f"{minutes}:{remaining_seconds:02d}"
 
-    def content_isupper(self, chaine):
-        return bool(re.search(r'[A-Z]', chaine))
+    def firstCarIsupper(self, chaine):
+        if chaine == "":
+            return False
+        return chaine[0].strip().isupper()
+        
+        

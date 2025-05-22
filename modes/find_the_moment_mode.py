@@ -40,7 +40,7 @@ class FindTheMomentMode(Mode):
         Tu dois lui répondre en te basant sur la transcription de la vidéo, et indiquer à quel moment de la vidéo le sujet est abordé.
         Dans la transcription, les temps correspondant aux sujets évoqués sont indiqués.
         Réponds à la question de l'utilisateur en te basant sur la transcription de la vidéo qu'il a demandée, et précise à quelle minute le sujet est abordé.
-
+        Le video_id est la valeur de la variable "v" dans l'URL de la vidéo YouTube.
         Voici quelques extraits de la transcription de la vidéo relatifs à la question de l'utilisateur :
 
         {documents}
