@@ -50,7 +50,7 @@ class FindTheMomentMode(Mode):
         # load VectorStore
         vector_store = Chroma(
             embedding_function=embedding,
-            persist_directory="./store"
+            persist_directory="./store/FindTheMoment"
         )
 
         # Load model
@@ -81,7 +81,6 @@ class FindTheMomentMode(Mode):
 
         documents = vector_store.similarity_search(user_input, k=4)
         for document in documents:
-            print(document.page_content)
             self.console.info(document.page_content)
 
         self.console.bot_start()

@@ -37,7 +37,7 @@ class LoadFindTheMomentMode(Mode):
         # Create vector store
         vector_store = Chroma(
             embedding_function=embedding,
-            persist_directory="./store"
+            persist_directory="./store/FindTheMoment"
         )
 
         # Loading
