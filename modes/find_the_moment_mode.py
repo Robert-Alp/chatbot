@@ -26,6 +26,8 @@ class FindTheMomentMode(Mode):
         self.system = system
         self.verbose = verbose
 
+        
+        
     @staticmethod
     def add_subparser(name: str, subparser: _SubParsersAction):
         chat_subparser = subparser.add_parser(name)
