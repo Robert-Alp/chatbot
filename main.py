@@ -13,6 +13,7 @@ from modes.load_find_the_moment_mode import LoadFindTheMomentMode
 from modes.find_the_moment_mode import FindTheMomentMode
 from modes.doc_mode import DocMode
 from modes.youtube_mode import YoutubeMode
+from modes.agent_mode import AgentMode
 
 load_dotenv()
 
@@ -42,5 +43,6 @@ if __name__ == "__main__":
     app.use("FindTheMoment", FindTheMomentMode)
     app.use("doc", DocMode)
     app.use("youtube", YoutubeMode)
+    app.use("agent", AgentMode)
 
     app.run()

@@ -16,7 +16,6 @@ import langchain
 from langchain_community.cache import SQLiteCache
 
 class YoutubeMode(Mode):
-    model: str = os.getenv("MODEL_DEFAULT") or "llama3.2:1b"
     system: str = "default"
     history: list[BaseMessage] = []
 
@@ -33,8 +32,7 @@ class YoutubeMode(Mode):
         self.url = url
         self.transcript = transcript
         self.verbose = verbose
-        if model:
-            self.model = model
+        self.model = model if model else os.getenv("DEFAULT_MODEL")
 
         # Initialisation du cache LangChain
         cache_path = os.path.join(os.path.dirname(os.getenv("CACHE_DIR")), ".langchain.db")
@@ -205,84 +203,56 @@ class YoutubeMode(Mode):
             self.console.error("URL YouTube invalide.")
             return
 
-        # Vérifier si des données existent déjà en cache
-        cached_summary, cached_transcript = self.get_cached_data(video_id)
+        transcript = self.get_transcript(video_id)
 
-        # Initialiser transcript à None
-        transcript = None
+        # Vérification finale de la transcription
+        if not transcript:
+            self.console.error("Impossible de récupérer la transcription.")
+            self.console.info("Conseil: Téléchargez manuellement la transcription et utilisez l'option --transcript")
+            return
 
-        # Initialiser le modèle ici, avant les branches conditionnelles
+        # Debug de la transcription
+        self.console.info(f"Longueur de la transcription : {len(transcript)} caractères")
+        self.console.info("Extrait de la transcription :" + transcript[:500])
+
+        # Générer un nouveau résumé
+        MAX_TRANSCRIPT_CHARS = 10000
+        transcript_for_summary = transcript[:]
+        self.console.info(f"Génération d'un nouveau résumé sur {len(transcript_for_summary)} caractères.")
         if self.verbose:
-            self.console.info(f"Chargement du modèle {self.model}...")
+            self.console.info(f"Transcription récupérée, chargement du modèle {self.model}...")
 
         model = init_chat_model(
-            self.model,
+            model=self.model,
             model_provider="ollama",
             temperature=1)
 
-        if cached_summary:
-            self.console.info("Utilisation du résumé en cache")
-            resume = cached_summary
-            self.console.bot_start()
-            self.console.info("Résumé de la vidéo :")
-            self.console.bot_chunk(resume)
-            self.console.bot_end()
-            self.console.info("\n---\n")
+        # 1. Résumé automatique de la vidéo
+        # Tronquer la transcription pour le résumé (limite de contexte)
+        MAX_TRANSCRIPT_CHARS = 10000
+        transcript_for_summary = transcript[:]
+        print(f"Résumé sur {len(transcript_for_summary)} caractères.")
 
-            # Utiliser la transcription en cache si disponible
-            transcript = cached_transcript
+        # Prompt simplifié et explicite pour le résumé
+        resume_prompt = ChatPromptTemplate.from_messages([
+            SystemMessagePromptTemplate.from_template(
+                "Tu es un assistant qui résume des vidéos YouTube à partir de leur transcription."
+            ),
+            HumanMessage(f"Voici la transcription d'une vidéo YouTube :\n\n{transcript_for_summary}\n\nRésume cette vidéo en français, en 10-15 lignes maximum."),
+        ])
+        resume_chain = resume_prompt | model | StrOutputParser()
+        self.console.info("Résumé de la vidéo :")
+        self.console.bot_start()
+        resume = ""
+        for chunk in resume_chain.stream({}):
+            resume += chunk
+            self.console.bot_chunk(chunk)
+        self.console.bot_end()
 
-            # Si pas de transcription en cache, l'extraire
-            if not transcript:
-                self.console.info("Transcription non trouvée en cache, extraction en cours...")
-                if self.transcript:
-                    transcript = self.load_transcript_from_file(self.transcript)
-                else:
-                    transcript = self.get_transcript(video_id)
-        else:
-            # Extraire la transcription si aucun résumé n'est en cache
-            if self.transcript:
-                transcript = self.load_transcript_from_file(self.transcript)
-            else:
-                if self.verbose:
-                    self.console.info(f"Extraction de la transcription de la vidéo...")
-                transcript = self.get_transcript(video_id)
+        # Sauvegarder le résumé et la transcription en cache
+        self.save_summary_to_cache(video_id, resume, transcript)
 
-            # Vérification finale de la transcription
-            if not transcript:
-                self.console.error("Impossible de récupérer la transcription.")
-                self.console.info("Conseil: Téléchargez manuellement la transcription et utilisez l'option --transcript")
-                return
-
-            # Debug de la transcription
-            self.console.info(f"Longueur de la transcription : {len(transcript)} caractères")
-            self.console.info("Extrait de la transcription :" + transcript[:500])
-
-            # Générer un nouveau résumé
-            MAX_TRANSCRIPT_CHARS = 10000
-            transcript_for_summary = transcript[:]
-            self.console.info(f"Génération d'un nouveau résumé sur {len(transcript_for_summary)} caractères.")
-
-            # Prompt simplifié et explicite pour le résumé
-            resume_prompt = ChatPromptTemplate.from_messages([
-                SystemMessagePromptTemplate.from_template(
-                    "Tu es un assistant qui résume des vidéos YouTube à partir de leur transcription."
-                ),
-                HumanMessage(f"Voici la transcription d'une vidéo YouTube :\n\n{transcript_for_summary}\n\nRésume cette vidéo en français, en 10-15 lignes maximum."),
-            ])
-            resume_chain = resume_prompt | model | StrOutputParser()
-            self.console.bot_start()
-            self.console.info("Résumé de la vidéo :")
-            resume = ""
-            for chunk in resume_chain.stream({}):
-                resume += chunk
-                self.console.bot_chunk(chunk)
-            self.console.bot_end()
-
-            # Sauvegarder le résumé et la transcription en cache
-            self.save_summary_to_cache(video_id, resume, transcript)
-
-            self.console.info("\n---\n")
+        self.console.info("\n---\n")
 
         # 2. Discussion interactive avec l'IA sur la vidéo
         if transcript:
